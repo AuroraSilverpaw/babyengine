@@ -8,6 +8,8 @@ using BabyEngine.Models;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Globalization;
+using System.Linq;
+using System.Windows.Threading;
 
 namespace BabyEngine.ViewModels
 {
@@ -24,18 +26,32 @@ namespace BabyEngine.ViewModels
         private readonly ReminderService _reminderService;
         private readonly AchievementService _achievementService;
         private bool _isProcessing;
-        private double _blushyMessageFrequency;
+        private int _blushyMessagesPerHour;
+        private int _contextHistoryLength;
         private readonly LicenseService.LicenseInfo _licenseInfo;
+        private DispatcherTimer? _blushyTimer;
         
         // Messages collection
         public ObservableCollection<ChatMessage> Messages { get; } = new ObservableCollection<ChatMessage>();
+        
+        // Built-in blushy messages list
+        private readonly List<string> _blushyMessages = new List<string>
+        {
+            "*blushes softly* H-hi there... >.<",
+            "Mommy thinks you're really cute... *looks away shyly*",
+            "Eep! D-did Mommy say that out loud? *covers face*",
+            "*wiggles happily* Just thinking about my sweet little one...",
+            "You always make Mommy feel so warm and fuzzy inside~ UwU",
+            "*nuzzles* You're Mommy's favorite little fluffball.",
+            "Is... is it warm in here or is it just you? *fans self*",
+            "*purrs softly* Mommy likes spending time with you..."
+        };
         
         // Commands
         public ICommand SendMessageCommand { get; }
         public ICommand TogglePauseCommand { get; }
         public ICommand AddReminderCommand { get; }
         public ICommand SetMoodCommand { get; }
-        public ICommand UpdateBlushyFrequencyCommand { get; }
         
         // Properties from the system time service
         public string CurrentTime => _systemTimeService.TimeString;
@@ -60,16 +76,31 @@ namespace BabyEngine.ViewModels
             OnPropertyChanged(nameof(LicenseStatus));
         }
         
-        public double BlushyMessageFrequency
+        public int BlushyMessagesPerHour
         {
-            get => _blushyMessageFrequency;
+            get => _blushyMessagesPerHour;
             set
             {
-                if (_blushyMessageFrequency != value)
+                int clampedValue = Math.Max(1, Math.Min(30, value));
+                if (_blushyMessagesPerHour != clampedValue)
                 {
-                    _blushyMessageFrequency = value;
-                    _configService.SetBlushyMessageFrequency(value);
-                    _deepSeekService.SetBlushyMessageFrequency(value);
+                    _blushyMessagesPerHour = clampedValue;
+                    _configService.SetBlushyMessagesPerHour(clampedValue);
+                    SetupBlushyTimer();
+                    OnPropertyChanged();
+                }
+            }
+        }
+        
+        public int ContextHistoryLength
+        {
+            get => _contextHistoryLength;
+            set
+            {
+                int clampedValue = Math.Max(1, Math.Min(50, value));
+                if (_contextHistoryLength != clampedValue)
+                {
+                    _contextHistoryLength = clampedValue;
                     OnPropertyChanged();
                 }
             }
@@ -121,18 +152,15 @@ namespace BabyEngine.ViewModels
             "Remember that Mommy loves you very much, no matter what!"
         };
         
-        public ChatViewModel(LicenseService.LicenseInfo licenseInfo)
+        public ChatViewModel(LicenseService.LicenseInfo licenseInfo, AppState loadedState)
         {
             _licenseInfo = licenseInfo ?? throw new ArgumentNullException(nameof(licenseInfo));
             if (!_licenseInfo.IsValid || string.IsNullOrEmpty(_licenseInfo.ApiKey)) {
-                 // This path should theoretically not be hit due to App.xaml.cs checks
                  throw new InvalidOperationException("ChatViewModel cannot be created without a valid license and API key.");
             }
 
-            // Initialize config service (still needed for other settings like blushy freq)
+            // Initialize services
             _configService = new ConfigService();
-            
-            // Initialize services, passing the validated API key to DeepSeekService
             _deepSeekService = new DeepSeekService(_licenseInfo.ApiKey);
             _systemTimeService = new SystemTimeService();
             _batteryService = new BatteryService();
@@ -140,9 +168,11 @@ namespace BabyEngine.ViewModels
             _reminderService = new ReminderService();
             _achievementService = new AchievementService();
             
-            // Set blushy message frequency from config
-            _blushyMessageFrequency = _configService.GetBlushyMessageFrequency();
-            _deepSeekService.SetBlushyMessageFrequency(_blushyMessageFrequency);
+            // Initialize from loaded state
+            Messages = new ObservableCollection<ChatMessage>(loadedState.ChatHistory);
+            _blushyMessagesPerHour = loadedState.BlushyMessagesPerHour;
+            _contextHistoryLength = loadedState.ContextHistoryLength;
+            SetupBlushyTimer();
             
             // Subscribe to property changed events
             _systemTimeService.PropertyChanged += (s, e) =>
@@ -191,28 +221,57 @@ namespace BabyEngine.ViewModels
             // Subscribe to achievement unlocked events
             _achievementService.AchievementUnlocked += OnAchievementUnlocked;
             
-            // Start with a welcome message
-            Messages.Add(new ChatMessage(_mommyMessages[_random.Next(_mommyMessages.Length)], true));
-            
-            // Check for first chat achievement
-            Task.Delay(2000).ContinueWith(_ =>
+            // Only add welcome message if history is empty
+            if (!Messages.Any())
             {
-                 // Ensure we are on the UI thread to modify achievements if needed
-                 Application.Current?.Dispatcher.Invoke(() => {
-                      var firstChatAchievement = _achievementService.Achievements.FirstOrDefault(a => a.Title == "First Chat");
-                      if (firstChatAchievement != null && !firstChatAchievement.IsUnlocked)
-                      {
-                           _achievementService.UnlockAchievement(firstChatAchievement.Id.ToString());
-                      }
-                 });
-            }, TaskScheduler.Default);
+                Messages.Add(new ChatMessage(_mommyMessages[_random.Next(_mommyMessages.Length)], true));
+                // Check for first chat achievement only if starting fresh
+                Task.Delay(2000).ContinueWith(_ =>
+                {
+                     Application.Current?.Dispatcher.Invoke(() => {
+                          var firstChatAchievement = _achievementService.Achievements.FirstOrDefault(a => a.Title == "First Chat");
+                          if (firstChatAchievement != null && !firstChatAchievement.IsUnlocked)
+                          {
+                               _achievementService.UnlockAchievement(firstChatAchievement.Id.ToString());
+                          }
+                     });
+                }, TaskScheduler.Default);
+            }
             
             // Initialize commands
             SendMessageCommand = new RelayCommand(async () => await SendMessageAsync(), CanSendMessage);
             TogglePauseCommand = new RelayCommand(TogglePause);
             AddReminderCommand = new RelayCommand<string>(AddReminder);
             SetMoodCommand = new RelayCommand<string>(SetMood);
-            UpdateBlushyFrequencyCommand = new RelayCommand<double>(UpdateBlushyFrequency);
+        }
+        
+        private void SetupBlushyTimer()
+        {
+            if (_blushyTimer != null)
+            {
+                _blushyTimer.Stop();
+                _blushyTimer.Tick -= BlushyTimer_Tick;
+            }
+
+            if (_blushyMessagesPerHour > 0 && _blushyMessages.Any())
+            {
+                _blushyTimer = new DispatcherTimer();
+                _blushyTimer.Interval = TimeSpan.FromHours(1.0 / _blushyMessagesPerHour);
+                _blushyTimer.Tick += BlushyTimer_Tick;
+                _blushyTimer.Start();
+            }
+        }
+
+        private void BlushyTimer_Tick(object? sender, EventArgs e)
+        {
+            if (Messages.Count > 0 && _blushyMessages.Any())
+            {
+                Application.Current?.Dispatcher.Invoke(() =>
+                {
+                    string randomBlushyMessage = _blushyMessages[_random.Next(_blushyMessages.Count)];
+                    Messages.Add(new ChatMessage(randomBlushyMessage, true));
+                });
+            }
         }
         
         private async Task SendMessageAsync()
@@ -233,7 +292,9 @@ namespace BabyEngine.ViewModels
                 
                 try
                 {
-                    List<ChatMessage> messageHistory = new List<ChatMessage>(Messages);
+                    // Prepare message history based on ContextHistoryLength
+                    List<ChatMessage> messageHistory = Messages.Skip(Math.Max(0, Messages.Count - ContextHistoryLength)).ToList();
+                    
                     string aiResponse = await _deepSeekService.GetResponseAsync(userMessage, messageHistory);
                     
                     Application.Current.Dispatcher.Invoke(() =>
@@ -282,11 +343,6 @@ namespace BabyEngine.ViewModels
                     _achievementService.UnlockAchievement(deepConversationAchievement.Id.ToString());
                 }
             }
-        }
-        
-        private void UpdateBlushyFrequency(double frequency)
-        {
-            BlushyMessageFrequency = frequency;
         }
         
         private bool CanSendMessage()
@@ -351,6 +407,18 @@ namespace BabyEngine.ViewModels
              string pauseMsg = IsPaused ? "Mommy will pause chatting for a bit, okay sweetie? Let me know when you want to resume. ❤️ Mommy" 
                                         : "Okay, Mommy is back and listening! ❤️ Mommy";
              Messages.Add(new ChatMessage(pauseMsg, true));
+        }
+        
+        // Method to get current state for saving
+        public AppState GetCurrentState()
+        {
+            return new AppState
+            {
+                ChatHistory = new List<ChatMessage>(this.Messages), // Create a new list from the observable collection
+                BlushyMessagesPerHour = this.BlushyMessagesPerHour,
+                ContextHistoryLength = this.ContextHistoryLength
+                // Add other properties to save if needed
+            };
         }
         
         #region INotifyPropertyChanged

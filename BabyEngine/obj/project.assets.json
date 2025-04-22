@@ -561,11 +561,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\Anton\\Documents\\coding\\babyengine-dotnet\\BabyEngine\\BabyEngine.csproj",
+      "projectUniqueName": "C:\\Users\\Anton\\Documents\\coding\\babyengine-neo\\BabyEngine\\BabyEngine.csproj",
       "projectName": "BabyEngine",
-      "projectPath": "C:\\Users\\Anton\\Documents\\coding\\babyengine-dotnet\\BabyEngine\\BabyEngine.csproj",
+      "projectPath": "C:\\Users\\Anton\\Documents\\coding\\babyengine-neo\\BabyEngine\\BabyEngine.csproj",
       "packagesPath": "C:\\Users\\Anton\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\Anton\\Documents\\coding\\babyengine-dotnet\\BabyEngine\\obj\\",
+      "outputPath": "C:\\Users\\Anton\\Documents\\coding\\babyengine-neo\\BabyEngine\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"

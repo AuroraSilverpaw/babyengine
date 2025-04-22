@@ -13,19 +13,32 @@ namespace BabyEngine;
 /// </summary>
 public partial class MainWindow : Window
 {
+    private static bool _isAlreadyOpen = false; // Flag to prevent multiple instances
+
     private ConfigService? _configService;
     private LicenseService.LicenseInfo? _validatedLicenseInfo;
     private ChatViewModel? _viewModel;
 
     public MainWindow()
     {
+        // Check if an instance is already open
+        if (_isAlreadyOpen)
+        {
+            // Close this instance immediately if another is already initializing
+            this.Close(); 
+            return; 
+        }
+        _isAlreadyOpen = true; // Mark this instance as open
+        
         InitializeComponent();
         this.Loaded += MainWindow_Loaded;
+        this.Closed += MainWindow_Closed;
+        this.Closed += (s, e) => _isAlreadyOpen = false; // Reset flag AFTER saving attempts
         KeyDown += MainWindow_KeyDown;
         MouseLeftButtonDown += MainWindow_MouseLeftButtonDown;
     }
 
-    private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
+    private void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
         _configService = new ConfigService();
         string storedLicenseKey = _configService.GetLicenseKey();
@@ -57,13 +70,16 @@ public partial class MainWindow : Window
             MessageBox.Show(this, "A valid license key is required to use BabyEngine. The application will now close.", 
                             "Activation Required", MessageBoxButton.OK, MessageBoxImage.Error);
             this.Close();
-            Application.Current?.Shutdown();
             return;
         }
 
         try
         {
-            _viewModel = new ChatViewModel(_validatedLicenseInfo);
+            // Load the saved application state
+            AppState loadedState = _configService.LoadAppState();
+            
+            // Initialize ViewModel with license info and loaded state
+            _viewModel = new ChatViewModel(_validatedLicenseInfo, loadedState);
             DataContext = _viewModel;
 
             SetupViewModelBindings();
@@ -72,10 +88,9 @@ public partial class MainWindow : Window
         }
         catch (Exception ex) 
         {
-            MessageBox.Show(this, $"An error occurred during initialization after license validation: {ex.Message}", 
+            MessageBox.Show(this, $"An error occurred during initialization: {ex.Message}", 
                             "Initialization Error", MessageBoxButton.OK, MessageBoxImage.Error);
             this.Close();
-            Application.Current?.Shutdown();
         }
     }
     
@@ -115,7 +130,7 @@ public partial class MainWindow : Window
         {
             if (_viewModel != null)
             {
-                BlushyFrequencySlider.Value = _viewModel.BlushyMessageFrequency;
+                BlushyFrequencySlider.Value = _viewModel.BlushyMessagesPerHour;
             }
         };
     }
@@ -201,16 +216,6 @@ public partial class MainWindow : Window
         }
     }
     
-    private void BlushyFrequencySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-    {
-        if (_viewModel != null && sender is Slider slider)
-        {
-            if (_viewModel.UpdateBlushyFrequencyCommand.CanExecute(slider.Value)) {
-                _viewModel.UpdateBlushyFrequencyCommand.Execute(slider.Value);
-            }
-        }
-    }
-    
     private void ShowFeatures_Click(object sender, RoutedEventArgs e)
     {
         FeaturesPopup.IsOpen = !FeaturesPopup.IsOpen;
@@ -249,5 +254,30 @@ public partial class MainWindow : Window
          else {
               // Maybe provide visual feedback if fields are empty/invalid
          }
+    }
+
+    // Handler for the Closed event to save state
+    private void MainWindow_Closed(object? sender, EventArgs e)
+    {
+        Console.WriteLine("[DEBUG] MainWindow_Closed event triggered."); // Log entry
+        if (_viewModel != null && _configService != null)
+        {
+            try
+            {
+                AppState currentState = _viewModel.GetCurrentState();
+                Console.WriteLine("[DEBUG] Got current state from ViewModel. Calling SaveAppState..."); // Log before save
+                _configService.SaveAppState(currentState);
+                Console.WriteLine("[DEBUG] SaveAppState called successfully."); // Log after save
+            }
+            catch (Exception ex)
+            {
+                 Console.WriteLine($"[DEBUG] Error during state saving in MainWindow_Closed: {ex.Message}");
+            }
+        }
+        else
+        {
+            Console.WriteLine("[DEBUG] ViewModel or ConfigService was null in MainWindow_Closed. State not saved.");
+        }
+         _isAlreadyOpen = false; 
     }
 }

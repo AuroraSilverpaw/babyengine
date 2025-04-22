@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "2CDxGNjYHWQ=",
+  "dgSpecHash": "GP+w4WhOZFo=",
   "success": true,
-  "projectFilePath": "C:\\Users\\Anton\\Documents\\coding\\babyengine-dotnet\\BabyEngine\\BabyEngine.csproj",
+  "projectFilePath": "C:\\Users\\Anton\\Documents\\coding\\babyengine-neo\\BabyEngine\\BabyEngine.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\Anton\\.nuget\\packages\\betalgo.openai.gpt3\\6.8.4\\betalgo.openai.gpt3.6.8.4.nupkg.sha512",
     "C:\\Users\\Anton\\.nuget\\packages\\microsoft.extensions.configuration.abstractions\\6.0.0\\microsoft.extensions.configuration.abstractions.6.0.0.nupkg.sha512",
