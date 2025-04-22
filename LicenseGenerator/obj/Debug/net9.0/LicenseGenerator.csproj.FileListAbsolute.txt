@@ -1,0 +1,14 @@
+C:\Users\Anton\Documents\coding\babyengine-dotnet\LicenseGenerator\bin\Debug\net9.0\LicenseGenerator.exe
+C:\Users\Anton\Documents\coding\babyengine-dotnet\LicenseGenerator\bin\Debug\net9.0\LicenseGenerator.deps.json
+C:\Users\Anton\Documents\coding\babyengine-dotnet\LicenseGenerator\bin\Debug\net9.0\LicenseGenerator.runtimeconfig.json
+C:\Users\Anton\Documents\coding\babyengine-dotnet\LicenseGenerator\bin\Debug\net9.0\LicenseGenerator.dll
+C:\Users\Anton\Documents\coding\babyengine-dotnet\LicenseGenerator\bin\Debug\net9.0\LicenseGenerator.pdb
+C:\Users\Anton\Documents\coding\babyengine-dotnet\LicenseGenerator\obj\Debug\net9.0\LicenseGenerator.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Anton\Documents\coding\babyengine-dotnet\LicenseGenerator\obj\Debug\net9.0\LicenseGenerator.AssemblyInfoInputs.cache
+C:\Users\Anton\Documents\coding\babyengine-dotnet\LicenseGenerator\obj\Debug\net9.0\LicenseGenerator.AssemblyInfo.cs
+C:\Users\Anton\Documents\coding\babyengine-dotnet\LicenseGenerator\obj\Debug\net9.0\LicenseGenerator.csproj.CoreCompileInputs.cache
+C:\Users\Anton\Documents\coding\babyengine-dotnet\LicenseGenerator\obj\Debug\net9.0\LicenseGenerator.dll
+C:\Users\Anton\Documents\coding\babyengine-dotnet\LicenseGenerator\obj\Debug\net9.0\refint\LicenseGenerator.dll
+C:\Users\Anton\Documents\coding\babyengine-dotnet\LicenseGenerator\obj\Debug\net9.0\LicenseGenerator.pdb
+C:\Users\Anton\Documents\coding\babyengine-dotnet\LicenseGenerator\obj\Debug\net9.0\LicenseGenerator.genruntimeconfig.cache
+C:\Users\Anton\Documents\coding\babyengine-dotnet\LicenseGenerator\obj\Debug\net9.0\ref\LicenseGenerator.dll
